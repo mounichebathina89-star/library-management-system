@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
@@ -20,6 +21,11 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const uploadDir = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -62,7 +68,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static uploads directory for e-books & covers
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadDir));
 
 // Rate limiting
 app.use('/api/', apiLimiter);
@@ -94,9 +100,14 @@ app.use((req, res) => {
 // Error middleware (must be last)
 app.use(errorMiddleware);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📍 Base URL: http://localhost:${PORT}`);
-  console.log(`🔗 API Base: http://localhost:${PORT}/api`);
-});
+// Start server for local development only.
+// Vercel serverless functions should export the app instead of calling listen().
+if (process.env.VERCEL !== '1' && process.env.VERCEL !== 'true') {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`📍 Base URL: http://localhost:${PORT}`);
+    console.log(`🔗 API Base: http://localhost:${PORT}/api`);
+  });
+}
+
+export default app;
