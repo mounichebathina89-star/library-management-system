@@ -30,8 +30,18 @@ if (!fs.existsSync(uploadDir)) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to database
-connectDB();
+// Avoid crashing serverless startup when Mongo is not ready or env is incomplete.
+const ensureDatabase = async () => {
+  try {
+    await connectDB();
+  } catch (error) {
+    console.warn('Database startup skipped:', error.message);
+  }
+};
+
+if (process.env.VERCEL !== '1' && process.env.VERCEL !== 'true') {
+  await ensureDatabase();
+}
 
 // Middleware
 app.use(
